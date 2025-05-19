@@ -8,6 +8,87 @@
 import numpy as np, tensorflow as tf, tensorflow_probability as tfp
 from tensorflow.keras import layers, regularizers, callbacks, losses
 
+# ------------------------ Data generation ----------------------------------
+
+def generate_oblate_sample(t: float,
+                           n_positive: int = 64,
+                           n_negative: int = 64,
+                           r_max: float = 1.0,
+                           center: Tuple[float,float] = (0,0),
+                           jitter: float = 0.05):
+    obl   = global_max_oblateness * (1 - np.cos(t*global_rotation_frequency))
+    angle = t * global_rotation_frequency * np.pi
+
+    scale_x, scale_y = 1.0, max(1e-6, 1.0-obl)
+    c, s = np.cos(angle), np.sin(angle)
+    R, R_inv = np.array([[c,-s],[s,c]]), np.array([[c,s],[-s,c]])
+    S_inv = np.diag([1.0/scale_x, 1.0/scale_y])
+    base_r = np.abs(np.sin(t))*r_max
+
+    # positive points on boundary
+    th = np.linspace(0,2*np.pi,n_positive,endpoint=False)
+    pos = np.stack([base_r*scale_x*np.cos(th), base_r*scale_y*np.sin(th)],1)
+    pos_w = (R@pos.T).T
+    x_pos = center[0]+pos_w[:,0]+np.random.normal(0,jitter,n_positive)
+    y_pos = center[1]+pos_w[:,1]+np.random.normal(0,jitter,n_positive)
+
+    # negatives
+    max_ext = 1.5*r_max*max(scale_x,scale_y)
+    r_rand  = np.random.uniform(0,max_ext,n_negative)
+    th_rand = np.random.uniform(0,2*np.pi,n_negative)
+    neg     = np.stack([r_rand*np.cos(th_rand), r_rand*np.sin(th_rand)],1)
+    neg_w   = (R@neg.T).T
+    x_neg = center[0]+neg_w[:,0]+np.random.normal(0,jitter,n_negative)
+    y_neg = center[1]+neg_w[:,1]+np.random.normal(0,jitter,n_negative)
+
+    x_all = np.concatenate([x_pos,x_neg]); y_all = np.concatenate([y_pos,y_neg])
+    t_all = np.full_like(x_all,t)
+
+    xy  = x_all*y_all; x2, y2 = x_all**2, y_all**2
+    xt, yt = x_all*t_all, y_all*t_all
+    sint = np.sin(t)*np.ones_like(x_all)
+    inputs = np.stack([x_all,y_all,t_all,xy,x2,y2,xt,yt,sint],1).astype('float32')
+
+    pts_c = np.stack([x_all-center[0], y_all-center[1]],1)
+    pts_r = (R_inv@pts_c.T).T
+    pts_canon = (S_inv@pts_r.T).T
+    radius = np.linalg.norm(pts_canon,axis=1)
+    dist = (radius-base_r).astype('float32')[:,None]
+    return inputs, dist
+
+# ------------------------ Generators ---------------------------------------
+
+def curriculum_generator():
+    pool: Deque = collections.deque(maxlen=REPLAY_POOL)
+    t = 0.0
+    while True:
+        hard_in, hard_lb = generate_oblate_sample(t,BATCH_SIZE//2,BATCH_SIZE//2)
+        k = int(REPLAY_FRAC*len(hard_in))
+        if len(pool)>=k>0:
+            rep_in, rep_lb = zip(*random.sample(pool,k))
+            inputs = np.vstack([hard_in,np.array(rep_in)])
+            labels = np.vstack([hard_lb,np.array(rep_lb)])
+        else:
+            inputs, labels = hard_in, hard_lb
+        if global_max_oblateness<OBLATENESS_END or global_rotation_frequency<ROT_FREQ_END:
+            pool.extend(list(zip(hard_in,hard_lb)))
+        yield inputs, labels
+        t += 0.05
+
+# Validation generators
+
+def val_core_gen():
+    t = 5.0
+    while True:
+        yield generate_oblate_sample(t,BATCH_SIZE//2,BATCH_SIZE//2)
+        t += 0.05
+
+def make_val_curr_gen(start=5.0):
+    t = start
+    while True:
+        yield generate_oblate_sample(t,BATCH_SIZE//2,BATCH_SIZE//2)
+        t += 0.05
+        
 # ----------------------- HYPER-EPOCH CONFIG -------------------------------
 HYPER_EPOCHS       = 5        # number of full curriculum runs
 EPOCHS_PER_HYPER   = 20       # curriculum epochs per hyper
