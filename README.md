@@ -64,9 +64,9 @@ python MicroCurr-V3.py
 After 5 hyper-epochs, a typical run prints:
 
 ```
-loss       floor 0.0283 | tail 0.0401 | drift 0.0117
-val_loss   floor 0.0422 | tail 0.0592 | drift 0.0170
-val_curr   floor 0.0247 | tail 0.0416 | drift 0.0169
+loss       floor 0.0139 | tail 0.0298 | drift 0.0159
+val_loss   floor 0.0340 | tail 0.0430 | drift 0.0090
+val_curr   floor 0.0283 | tail 0.0386 | drift 0.0103
 ```
 
 
