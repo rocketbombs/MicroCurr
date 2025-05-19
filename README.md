@@ -69,9 +69,9 @@ val_loss   floor 0.0422 | tail 0.0592 | drift 0.0170
 val_curr   floor 0.0247 | tail 0.0416 | drift 0.0169
 ```
 
-```markdown
+
 ![Training Plot](training_plot.png)
-```
+
 
 ## 🔄 Callbacks
 
