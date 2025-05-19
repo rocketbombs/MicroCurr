@@ -1,22 +1,24 @@
 # MicroCurr: A Tiny Curriculum-Learning Regression Model
 
-We present MicroCurr, A minimal TensorFlow 2 script demonstrating curriculum learning with “hyper-epochs”: multiple full runs through your curriculum schedule, sinusoidal resets, and a One-Cycle learning-rate schedule.
+We present MicroCurr, a single-file TensorFlow 2 demo. It combines curriculum learning with "hyper-epochs" (multiple full curriculum cycles), built‑in streaming data generation, and an integrated plotting utility — all out of the box.
 
 ## 🚀 Features
 
-* **Hyper-Epochs**: Run N full curriculum cycles (hyper-epochs), each resetting your curriculum schedule.
-* **Sinusoidal Curriculum**: Smooth 0→1→0 parameter ramp per hyper-epoch via a `SinusoidalCurriculum` callback.
-* **One-Cycle LR Schedule**: Fast warmup + cosine-decay to stabilize training.
-* **Dual Validation**: Standard core validation (`val_loss`) and “current” curriculum validation (`val_curr`) via a custom callback.
-* **Lightweight**: \~100 lines of code, plug in your own data generators.
+* **Out-of-the-Box Streaming Data**: Includes `streaming_generator()` for synthetic regression data—no extra setup required.
+* **Hyper-Epochs**: Perform N full curriculum runs (hyper-epochs) with periodic resets.
+* **Sinusoidal Curriculum**: Smoothly ramp your curriculum parameter (0→1→0 each hyper-epoch) via a `SinusoidalCurriculum` callback.
+* **One-Cycle LR Schedule**: Fast warmup + cosine decay for stable, efficient optimization.
+* **Dual Validation**: Tracks both core validation loss (`val_loss`) and curriculum-specific validation (`val_curr`) via a custom callback.
+* **Integrated Plotting**: Generates training vs. validation curves at the end of each run using Matplotlib (saved as `training_plot.png`).
+* **Minimal**: \~100 lines of code in a single `MicroCurr-V3.py` file under MIT license.
 
 ## 🔧 Prerequisites
 
-* Python 3.8+
-* [TensorFlow 2.x](https://www.tensorflow.org/)
+* Python 3.8+
+* [TensorFlow 2.x](https://www.tensorflow.org/)
 * [TensorFlow Probability](https://www.tensorflow.org/probability)
 * NumPy
-* Matplotlib (for plotting)
+* Matplotlib
 
 ```bash
 pip install tensorflow tensorflow-probability numpy matplotlib
@@ -24,59 +26,71 @@ pip install tensorflow tensorflow-probability numpy matplotlib
 
 ## ⚙️ Configuration
 
-At the top of `MicroCurr-V3.py`, adjust:
+At the top of `MicroCurr-V3.py`, tune your experiment:
 
 ```python
-HYPER_EPOCHS       = 5        # full curriculum runs
-EPOCHS_PER_HYPER   = 20       # epochs per run
+HYPER_EPOCHS       = 5        # Number of full curriculum cycles
+EPOCHS_PER_HYPER   = 20       # Epochs per cycle
 BATCH_SIZE         = 128
 STEPS_PER_EPOCH    = 200
 
-# Curriculum end-points (e.g. max oblateness, rotation freq, sigmoid shape)
+# Curriculum endpoints
 OBLATENESS_END     = 0.5
 ROT_FREQ_END       = 2.0
 SIGMOID_SCALE      = 0.5
 
-# One-Cycle LR params
+# One-Cycle LR parameters
 BASE_LR            = 1e-4
 PEAK_LR            = 2.5e-4
 MIN_LR             = 1e-6
 PCT_WARMUP         = 0.15
 ```
 
-Hook your own data-generators:
-
-* `curriculum_generator()` → yields `(x_batch, y_batch)` following your curriculum schedule.
-* `val_core_gen()` → yields core validation batches for `val_loss`.
-
 ## ▶️ Running
 
+Clone the repo and run:
+
 ```bash
+git clone https://github.com/rocketbombs/MicroCurr.git
+cd MicroCurr
 python MicroCurr-V3.py
 ```
 
-* Training logs include `loss`, `val_loss`, and `val_curr`.
-* At the end, a summary prints “floor”, “tail”, and “drift” for each metric.
-* A Matplotlib plot overlays training (smoothed), core-val, and curriculum-val curves.
+* Progress logs include `loss`, `val_loss`, and `val_curr` each epoch.
+* At completion, you’ll see a summary in the console and a `training_plot.png` in your working directory.
+
+## 📈 Example Results
+
+After 5 hyper-epochs, a typical run prints:
+
+```
+loss       floor 0.0283 | tail 0.0401 | drift 0.0117
+val_loss   floor 0.0422 | tail 0.0592 | drift 0.0170
+val_curr   floor 0.0247 | tail 0.0416 | drift 0.0169
+```
+
+```markdown
+![Training Plot](training_plot.png)
+```
 
 ## 🔄 Callbacks
 
 * **SinusoidalCurriculum**
-  Resets curriculum parameters each hyper-epoch via a user-supplied `update_fn(scale)`.
+  Adjusts curriculum parameters each epoch and resets each hyper-epoch.
 
 * **ValCurrCB**
-  Measures “current” curriculum performance every epoch using a Huber loss over a few validation steps.
+  Runs mini-validation on current curriculum difficulty and reports a separate Huber loss.
 
 ## 🎨 Customization
 
-* Swap in different curriculum schedules (linear, exponential).
-* Tweak LR schedule: replace `OneCycleSchedule` with any `LearningRateSchedule`.
-* Plug in more complex models or residual blocks.
+* Swap in different synthetic data generators or feed in your own dataset.
+* Experiment with linear, exponential, or custom curriculum schedules.
+* Modify the learning-rate schedule or swap in more complex model architectures.
 
 ## 📄 License
 
-MIT License – see [LICENSE](LICENSE) for details.
+MIT License – see [LICENSE](LICENSE) for full text.
 
 ---
 
-> Feel free to raise issues or PRs for new features, fixes, or enhancements!
+> Pull requests welcome for new features, improved examples, or performance tweaks!
