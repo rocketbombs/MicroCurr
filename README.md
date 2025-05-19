@@ -70,7 +70,7 @@ val_curr   floor 0.0247 | tail 0.0416 | drift 0.0169
 ```
 
 
-![Training Plot](training_plot.png)
+![Training Plot](newplot.png)
 
 
 ## 🔄 Callbacks
